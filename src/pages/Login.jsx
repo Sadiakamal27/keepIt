@@ -30,7 +30,7 @@ function Login() {
     <Card className="w-full max-w-sm">
       <CardHeader className="text-center space-y-2">
         <h1 className="text-4xl font-bold mb-4">Login</h1>
-       
+        <h2 className="text-2xl font-bold">Welcome back</h2>
         <p className="text-sm text-muted-foreground">Please enter your details</p>
       </CardHeader>
 
