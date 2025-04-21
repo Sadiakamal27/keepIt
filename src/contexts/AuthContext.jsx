@@ -7,24 +7,30 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
   const login = async (email, password) => {
-    try {
-      const response = await fetch("http://localhost:5000/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await response.json();
-      if (data.email) {
-        setUser({ email: data.email });
-        localStorage.setItem("user", JSON.stringify({ email: data.email }));
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error("Login failed:", error);
-      return false;
+  try {
+    const response = await fetch("http://localhost:5000/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      alert( "Login failed due to invalid credentials");
     }
-  };
+
+    const data = await response.json();
+    if (data.email) {
+      setUser({ email: data.email });
+      localStorage.setItem("user", JSON.stringify({ email: data.email }));
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error("Login failed:", error);
+    return false;
+  }
+};
 
   const signup = async (email, password) => {
     try {
