@@ -1,17 +1,23 @@
 import { useAuth } from "../contexts/AuthContext"
+import { Sidebar } from "../components/Sidebar"
 
 function Home() {
   const { user } = useAuth()
 
   return (
-    <div className="p-6">
+    <div className="flex h-[calc(100vh-64px)] w-full"> 
+    <Sidebar />
+    
+    <div className="flex-1 p-6 overflow-y-auto">
       <h1 className="text-2xl">Welcome to KeepIt!</h1>
-      {user ? (
+      {user && (
         <p className="mt-2">Logged in as: <strong>{user.email}</strong></p>
-      ) : (
-        <p className="mt-2">Please login to create or view notes.</p>
       )}
+
+      
+      {/* Your notes content will go here */}
     </div>
+  </div>
   )
 }
 

@@ -5,7 +5,9 @@
   text-align: center; */
   min-height: 100vh;
   display: flex;
+  margin: 0;
   flex-direction: column;
+  padding: 0 !important;
 }
 
 .logo {
@@ -39,9 +41,9 @@
   }
 }
 
-.card {
+/* .card {
   padding: 2em;
-}
+} */
 
 .read-the-docs {
   color: #888;

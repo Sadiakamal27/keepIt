@@ -10,6 +10,8 @@ export default function App() {
   const { user } = useAuth();
 
   return (
+    
+    
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-grow flex items-center justify-center bg-gray-50">
@@ -27,7 +29,10 @@ export default function App() {
             element={!user ? <Signup /> : <Navigate to="/" replace />}
           />
         </Routes>
+       
+      
       </main>
+    
     </div>
   );
 }
