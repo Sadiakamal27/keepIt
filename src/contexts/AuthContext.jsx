@@ -61,8 +61,22 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
+  // Add to your AuthContext state
+const [notes, setNotes] = useState([])
+
+// Add a simple function to handle notes
+const addNote = (content) => {
+  const newNote = {
+    id: Date.now(),
+    content,
+    createdAt: new Date().toISOString(),
+    userId: user?.email
+  }
+  setNotes(prev => [...prev, newNote])
+}
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, signup }}>
+    <AuthContext.Provider value={{ user, login, logout, signup , notes, addNote }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,5 +1,7 @@
 import { useAuth } from "../contexts/AuthContext"
 import { Sidebar } from "../components/Sidebar"
+import { NoteInput } from "../components/NoteInput"
+
 
 function Home() {
   const { user } = useAuth()
@@ -14,8 +16,7 @@ function Home() {
         <p className="mt-2">Logged in as: <strong>{user.email}</strong></p>
       )}
 
-      
-      {/* Your notes content will go here */}
+<NoteInput />
     </div>
   </div>
   )
