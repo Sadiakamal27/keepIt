@@ -17,6 +17,7 @@ function Navbar() {
           />
           <h1 className="text-xl font-bold text-white ml-2">KeepIt</h1>
         </Link>
+      
 
         {user && <LogoutButton />}
           
