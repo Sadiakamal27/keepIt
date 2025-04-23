@@ -32,6 +32,18 @@ db.serialize(() => {
       FOREIGN KEY(user_id) REFERENCES users(id)
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      title TEXT NOT NULL DEFAULT 'Untitled',
+      content TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(user_id) REFERENCES users(id)
+    )
+  `);
 });
 
 // User registration
@@ -140,11 +152,122 @@ app.delete('/records/:id', authenticateUser, (req, res) => {
   );
 });
 
+//getting all notes for a user
+app.get('/notes', authenticateUser, (req, res) => {
+  db.all(
+    'SELECT * FROM notes WHERE user_id = ? ORDER BY updated_at DESC',
+    [req.userId],
+    (err, notes) => {
+      if (err) {
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+      res.json(notes);
+    }
+  )
+
+});
+
+//get a single note
+app.get('/notes/:id', authenticateUser, (req, res) => {
+  db.all(
+    'SELECT * FROM notes WHERE id = ? AND user_id = ?',
+    [req.params.id, req.userId],
+    (err, note) => {
+      if (err) {
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+      if (!note) {
+        return res.status(404).json({ error: 'Note not found' });
+      }
+      res.json(note);
+    }
+  )
+});
+
+
+//create a new note
+app.post('/notes', authenticateUser, (req, res) => {
+
+  const [title, content] = req.body;
+
+  const finalTitle = title || "Untitled";
+  const finalContent = content || " ";
+
+  db.run(
+    'INSERT INTO notes (user_id , title , content ) VALUE (? ,? , ?)'
+    [req.userId, finalTitle, finalContent],
+    function (error) {
+      if (error) {
+        return res.status(500).json({ error: "INTERNAL SERVER ERROR" })
+      }
+      res.json(
+        {
+          id:this.lastID,
+          title: finalTitle,
+          content:finalContent,
+          user_id: req.userId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+        }
+      )
+    }
+  )
+
+});
+
+
+//update a note
+app.put('/notes/:id', authenticateUser, (req, res) => {
+  const { title, content = "" } = req.body;  // Default content to empty string
+  
+  // No content validation - allow empty updates
+  db.run(
+    `UPDATE notes 
+     SET title = ?, content = ?, updated_at = CURRENT_TIMESTAMP 
+     WHERE id = ? AND user_id = ?`,
+    [title || 'Untitled', content, req.params.id, req.userId],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Note not found or not owned by user' });
+      }
+      res.json({ 
+        success: true,
+        updatedNote: {
+          id: req.params.id,
+          title: title || 'Untitled',
+          content: content || ""
+        }
+      });
+    }
+  );
+});
+
+//delete a note
+
+app.delete('/notes/:id', authenticateUser, (req, res) => {
+  db.run(
+    'DELETE FROM notes WHERE id = ? AND user_id = ?',
+    [req.params.id, req.userId],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Note not found or not owned by user' });
+      }
+      res.json({ success: true });
+    }
+  );
+});
+
 const PORT = 5000;
 // Add this near your other routes (before app.listen)
 app.get('/', (req, res) => {
-    res.send('Backend server is running!');
-  });
+  res.send('Backend server is running!');
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
