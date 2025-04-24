@@ -1,12 +1,15 @@
-const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
-const bcrypt = require('bcryptjs');
-const bodyParser = require('body-parser');
-const cors = require('cors');
+import express from 'express';
+import sqlite3 from 'sqlite3';  // Changed this line
+import bcrypt from 'bcryptjs';
+import bodyParser from 'body-parser';
+import cors from 'cors';
+
 
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
+
+
 
 // Initialize database
 const db = new sqlite3.Database('./database.sqlite');
@@ -19,17 +22,6 @@ db.serialize(() => {
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS records (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      email TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY(user_id) REFERENCES users(id)
     )
   `);
 
@@ -102,74 +94,63 @@ function authenticateUser(req, res, next) {
   next();
 }
 
-// Get all records for a user
-app.get('/records', authenticateUser, (req, res) => {
-  db.all(
-    'SELECT * FROM records WHERE user_id = ?',
-    [req.userId],
-    (err, records) => {
-      if (err) {
-        return res.status(500).json({ error: 'Internal server error' });
-      }
-      res.json(records);
-    }
-  );
-});
 
-// Add a new record
-app.post('/records', authenticateUser, (req, res) => {
-  const { name, email } = req.body;
-  if (!name || !email) {
-    return res.status(400).json({ error: 'Name and email are required' });
-  }
-
-  db.run(
-    'INSERT INTO records (user_id, name, email) VALUES (?, ?, ?)',
-    [req.userId, name, email],
-    function (err) {
-      if (err) {
-        return res.status(500).json({ error: 'Internal server error' });
-      }
-      res.json({ id: this.lastID, name, email });
-    }
-  );
-});
-
-// Delete a record
-app.delete('/records/:id', authenticateUser, (req, res) => {
-  db.run(
-    'DELETE FROM records WHERE id = ? AND user_id = ?',
-    [req.params.id, req.userId],
-    function (err) {
-      if (err) {
-        return res.status(500).json({ error: 'Internal server error' });
-      }
-      if (this.changes === 0) {
-        return res.status(404).json({ error: 'Record not found' });
-      }
-      res.json({ success: true });
-    }
-  );
-});
-
-//getting all notes for a user
+// Get all notes for a user
 app.get('/notes', authenticateUser, (req, res) => {
   db.all(
     'SELECT * FROM notes WHERE user_id = ? ORDER BY updated_at DESC',
     [req.userId],
     (err, notes) => {
       if (err) {
+        console.error('Database error:', err);
         return res.status(500).json({ error: 'Internal server error' });
       }
       res.json(notes);
     }
-  )
-
+  );
 });
 
-//get a single note
+// Create a new note
+app.post('/notes', authenticateUser, (req, res) => {
+  console.log('Received note creation request with body:', req.body);
+  console.log('User ID:', req.userId);
+
+  const { title, content } = req.body;
+
+  if (!content) {
+    return res.status(400).json({ error: 'Content is required' });
+  }
+
+  const finalTitle = title || content.split('\n')[0]?.substring(0, 50) || 'Untitled';
+  const finalContent = content;
+
+  db.run(
+    'INSERT INTO notes (user_id, title, content) VALUES (?, ?, ?)',
+    [req.userId, finalTitle, finalContent],
+    function (error) {
+      if (error) {
+        console.error('Database error:', error);
+        return res.status(500).json({
+          error: "Internal server error",
+          details: error.message
+        });
+      }
+      console.log('Note inserted with ID:', this.lastID);
+      res.status(201).json({
+        id: this.lastID,
+        user_id: req.userId,
+        title: finalTitle,
+        content: finalContent,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    }
+  );
+});
+
+// Get a single note
 app.get('/notes/:id', authenticateUser, (req, res) => {
-  db.all(
+  db.get(
     'SELECT * FROM notes WHERE id = ? AND user_id = ?',
     [req.params.id, req.userId],
     (err, note) => {
@@ -181,46 +162,13 @@ app.get('/notes/:id', authenticateUser, (req, res) => {
       }
       res.json(note);
     }
-  )
+  );
 });
 
-
-//create a new note
-app.post('/notes', authenticateUser, (req, res) => {
-
-  const [title, content] = req.body;
-
-  const finalTitle = title || "Untitled";
-  const finalContent = content || " ";
-
-  db.run(
-    'INSERT INTO notes (user_id , title , content ) VALUE (? ,? , ?)'
-    [req.userId, finalTitle, finalContent],
-    function (error) {
-      if (error) {
-        return res.status(500).json({ error: "INTERNAL SERVER ERROR" })
-      }
-      res.json(
-        {
-          id:this.lastID,
-          title: finalTitle,
-          content:finalContent,
-          user_id: req.userId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-        }
-      )
-    }
-  )
-
-});
-
-
-//update a note
+// Update a note
 app.put('/notes/:id', authenticateUser, (req, res) => {
-  const { title, content = "" } = req.body;  // Default content to empty string
-  
-  // No content validation - allow empty updates
+  const { title, content = "" } = req.body;
+
   db.run(
     `UPDATE notes 
      SET title = ?, content = ?, updated_at = CURRENT_TIMESTAMP 
@@ -233,7 +181,7 @@ app.put('/notes/:id', authenticateUser, (req, res) => {
       if (this.changes === 0) {
         return res.status(404).json({ error: 'Note not found or not owned by user' });
       }
-      res.json({ 
+      res.json({
         success: true,
         updatedNote: {
           id: req.params.id,
@@ -245,8 +193,7 @@ app.put('/notes/:id', authenticateUser, (req, res) => {
   );
 });
 
-//delete a note
-
+// Delete a note
 app.delete('/notes/:id', authenticateUser, (req, res) => {
   db.run(
     'DELETE FROM notes WHERE id = ? AND user_id = ?',
@@ -264,7 +211,7 @@ app.delete('/notes/:id', authenticateUser, (req, res) => {
 });
 
 const PORT = 5000;
-// Add this near your other routes (before app.listen)
+
 app.get('/', (req, res) => {
   res.send('Backend server is running!');
 });

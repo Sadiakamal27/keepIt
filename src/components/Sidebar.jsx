@@ -1,22 +1,29 @@
-import { Home, Plus, Settings, Search } from "lucide-react";
+import { Plus, Search, FileText } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Input } from "./ui/input"; // Make sure you have this component or create it
+import { Input } from "./ui/input";
 import { useState } from "react";
+import { useAppContext } from "../contexts/AppContext"; // Changed from useNotesContext
 
 export const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Changed from useNotesContext to useAppContext
+  const { notes, isLoading } = useAppContext();
 
   const routes = [
     { icon: Plus, path: "/new", label: "Create Note" },
   ];
 
+  const filteredNotes = notes.filter(note =>
+    note.content.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="w-69 bg-white border-r p-4 flex flex-col h-full">
       <h2 className="text-xl font-bold mb-4">Your Notes</h2>
       
-      {/* Search Bar */}
       <div className="relative mb-4">
         <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
         <Input
@@ -28,7 +35,7 @@ export const Sidebar = () => {
         />
       </div>
 
-      <div className="space-y-2 flex-1 overflow-y-auto">
+      <div className="space-y-2">
         {routes.map((route) => (
           <button
             key={route.path}
@@ -41,6 +48,32 @@ export const Sidebar = () => {
             <span>{route.label}</span>
           </button>
         ))}
+      </div>
+
+      <div className="flex-1 overflow-y-auto mt-4">
+        {isLoading ? (
+          <div className="text-center py-4">Loading notes...</div>
+        ) : filteredNotes.length === 0 ? (
+          <div className="text-center py-4 text-gray-500">
+            {searchQuery ? "No matching notes" : "No notes yet"}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filteredNotes.map((note) => (
+              <div
+                key={note.id}
+                className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 cursor-pointer"
+                onClick={() => navigate(`/notes/${note.id}`)} 
+              >
+                <FileText className="h-5 w-5 text-muted-foreground" />
+                <div className="truncate">
+                  {note.content.substring(0, 30)}
+                  {note.content.length > 30 && "..."}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

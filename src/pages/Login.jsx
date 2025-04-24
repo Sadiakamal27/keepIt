@@ -4,12 +4,12 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { useState } from "react"
 import { Link, useNavigate , Navigate } from "react-router-dom"
-import { useAuth } from "../contexts/AuthContext"
+import { useAppContext } from "../contexts/AppContext"
 
 function Login() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const {user, login}=useAuth()
+  const {user, login}=useAppContext()
   const navigate = useNavigate()
 
   const handleSubmit = (e) => {

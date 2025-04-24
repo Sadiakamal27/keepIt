@@ -3,11 +3,13 @@ import Navbar from "./components/Navbar";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Home from "./pages/Home";
-import { useAuth } from "./contexts/AuthContext";
+import { useAppContext } from "./contexts/AppContext";
 import { Navigate } from "react-router-dom";
+import NoteTextarea from "./components/NoteTextarea";
+
 
 export default function App() {
-  const { user } = useAuth();
+  const { user } = useAppContext();
 
   return (
     
@@ -15,6 +17,7 @@ export default function App() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-grow flex items-center justify-center bg-gray-50">
+        
         <Routes>
           <Route
             path="/"
@@ -28,7 +31,13 @@ export default function App() {
             path="/signup"
             element={!user ? <Signup /> : <Navigate to="/" replace />}
           />
+         
+         
+          
+           
+          
         </Routes>
+        
        
       
       </main>

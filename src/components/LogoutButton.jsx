@@ -1,14 +1,14 @@
 import { Button } from "@/components/ui/button";
-import { useAuth } from "../contexts/AuthContext";
+import { useAppContext } from "../contexts/AppContext"; // Changed from useAuth
 import { useNavigate } from "react-router-dom";
 
 function LogoutButton() {
-  const { logout } = useAuth();
+  const { logout } = useAppContext(); // Changed from useAuth
   const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
-      navigate("/login");
+    navigate("/login");
   };
 
   return (

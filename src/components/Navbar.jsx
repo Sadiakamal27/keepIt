@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
+import { useAppContext } from "../contexts/AppContext"; // Changed from useAuth
 import { Button } from "@/components/ui/button";
-import LogoutButton from "./LogoutButton"; // Import the new component
+import LogoutButton from "./LogoutButton";
 
 function Navbar() {
-  const { user } = useAuth();
+  const { user } = useAppContext(); // Changed from useAuth
 
   return (
     <nav className="bg-amber-600 p-3 shadow-md w-full">
@@ -18,11 +18,8 @@ function Navbar() {
           <h1 className="text-xl font-bold text-white ml-2">KeepIt</h1>
         </Link>
       
-
         {user && <LogoutButton />}
-          
-        </div>
-      
+      </div>
     </nav>
   );
 }

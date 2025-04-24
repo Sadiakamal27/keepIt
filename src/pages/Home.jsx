@@ -1,10 +1,9 @@
-import { useAuth } from "../contexts/AuthContext"
+import { useAppContext } from "../contexts/AppContext"
 import { Sidebar } from "../components/Sidebar"
-import { NoteInput } from "../components/NoteInput"
-
+import NoteTextarea from "../components/NoteTextarea"
 
 function Home() {
-  const { user } = useAuth()
+  const { user } = useAppContext()
 
   return (
     <div className="flex h-[calc(100vh-64px)] w-full"> 
@@ -15,8 +14,8 @@ function Home() {
       {user && (
         <p className="mt-2">Logged in as: <strong>{user.email}</strong></p>
       )}
+<NoteTextarea />
 
-<NoteInput />
     </div>
   </div>
   )
