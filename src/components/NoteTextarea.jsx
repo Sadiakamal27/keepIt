@@ -13,20 +13,39 @@ function NoteTextarea() {
   const [content, setContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  const currentNote = id ? notes.find(note => note.id === id) : null;
+  const currentNote = id ? notes.find(note => String(note.id) === String(id)) : null;
 
-  // Initialize content when note changes
   useEffect(() => {
-    if (currentNote) {
+    if (id && !currentNote && !isLoading) {
+
+      const fetchNote = async () => {
+        try {
+          const response = await fetch(`http://localhost:5000/notes/${id}`, {
+            headers: {
+              "Content-Type": "application/json",
+              "user-id": localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")).id : "",
+            },
+          });
+          if (!response.ok) throw new Error("Failed to fetch note");
+          const note = await response.json();
+          setContent(note.content);
+        } catch (error) {
+          console.error("Fetch note error:", error);
+          setContent(""); 
+          navigate("/"); 
+        }
+      };
+      fetchNote();
+    } else if (currentNote) {
       setContent(currentNote.content);
     } else {
-      setContent(""); // Clear for new notes
+      setContent(""); 
     }
-  }, [currentNote, id]);
+  }, [currentNote, id, isLoading, navigate]);
 
   const handleSave = async () => {
     if (!content.trim()) {
-      alert("Note cannot be empty!"); // Optional validation
+      alert("Note cannot be empty!"); 
       return;
     }
   
@@ -40,26 +59,27 @@ function NoteTextarea() {
         // Create new note
         const success = await addNote({ content });
         if (success) {
-          setContent(""); // Only clear on successful creation
+          setContent(""); 
         } else {
           throw new Error("Failed to create note");
         }
       }
     } catch (error) {
       console.error("Save error:", error);
-      // Optionally set an error state for the UI
+     
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-full p-4 space-y-4">
+    <div className="flex flex-col h-100 p-4 space-y-4">
+      
       <Textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder="Start typing your note here..."
-        className="flex-1 resize-none"
+        className="flex-1 "
       />
       <div className="flex justify-end">
         <Button 

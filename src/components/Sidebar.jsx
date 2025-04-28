@@ -1,16 +1,15 @@
-import { Plus, Search, FileText } from "lucide-react";
+import { Plus, Search, FileText, Trash2 } from "lucide-react"; 
 import { useNavigate, useLocation } from "react-router-dom";
 import { Input } from "./ui/input";
 import { useState } from "react";
-import { useAppContext } from "../contexts/AppContext"; // Changed from useNotesContext
+import { useAppContext } from "../contexts/AppContext";
 
 export const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   
-  // Changed from useNotesContext to useAppContext
-  const { notes, isLoading } = useAppContext();
+  const { notes, isLoading, deleteNote } = useAppContext();
 
   const routes = [
     { icon: Plus, path: "/new", label: "Create Note" },
@@ -19,6 +18,13 @@ export const Sidebar = () => {
   const filteredNotes = notes.filter(note =>
     note.content.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleDelete = async (id) => {
+    const success = await deleteNote(id);
+    if (success && location.pathname === `/notes/${id}`) {
+      navigate("/"); 
+    }
+  };
 
   return (
     <div className="w-69 bg-white border-r p-4 flex flex-col h-full">
@@ -62,14 +68,24 @@ export const Sidebar = () => {
             {filteredNotes.map((note) => (
               <div
                 key={note.id}
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 cursor-pointer"
-                onClick={() => navigate(`/notes/${note.id}`)} 
+                className="group flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 cursor-pointer"
               >
-                <FileText className="h-5 w-5 text-muted-foreground" />
-                <div className="truncate">
-                  {note.content.substring(0, 30)}
-                  {note.content.length > 30 && "..."}
+                <div
+                  className="flex items-center gap-3 flex-1"
+                  onClick={() => navigate(`/notes/${note.id}`)}
+                >
+                  <FileText className="h-5 w-5 text-muted-foreground" />
+                  <div className="truncate">
+                    {note.content.substring(0, 30)}
+                    {note.content.length > 30 && "..."}
+                  </div>
                 </div>
+                <button
+                  onClick={() => handleDelete(note.id)}
+                  className="hidden group-hover:block  hover:text-white"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </button>
               </div>
             ))}
           </div>
