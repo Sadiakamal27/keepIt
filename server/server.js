@@ -1,18 +1,15 @@
-import express from 'express';
-import sqlite3 from 'sqlite3';  // Changed this line
-import bcrypt from 'bcryptjs';
-import bodyParser from 'body-parser';
-import cors from 'cors';
-
+import express from "express";
+import sqlite3 from "sqlite3";
+import bcrypt from "bcryptjs";
+import bodyParser from "body-parser";
+import cors from "cors";
 
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
-
-
 // Initialize database
-const db = new sqlite3.Database('./database.sqlite');
+const db = new sqlite3.Database("./database.sqlite");
 
 // Create tables if they don't exist
 db.serialize(() => {
@@ -39,71 +36,69 @@ db.serialize(() => {
 });
 
 // User registration
-app.post('/register', async (req, res) => {
+app.post("/register", async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
+    return res.status(400).json({ error: "Email and password are required" });
   }
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     db.run(
-      'INSERT INTO users (email, password) VALUES (?, ?)',
+      "INSERT INTO users (email, password) VALUES (?, ?)",
       [email, hashedPassword],
       function (err) {
         if (err) {
-          return res.status(400).json({ error: 'Email already exists' });
+          return res.status(400).json({ error: "Email already exists" });
         }
         res.json({ id: this.lastID, email });
       }
     );
   } catch (err) {
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // User login
-app.post('/login', (req, res) => {
+app.post("/login", (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
+    return res.status(400).json({ error: "Email and password are required" });
   }
 
-  db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
+  db.get("SELECT * FROM users WHERE email = ?", [email], async (err, user) => {
     if (err || !user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
     res.json({ id: user.id, email: user.email });
   });
 });
 
-// CRUD operations for records (protected routes)
 // Middleware to verify user
 function authenticateUser(req, res, next) {
-  const userId = req.headers['user-id'];
+  const userId = req.headers["user-id"];
   if (!userId) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return res.status(401).json({ error: "Unauthorized" });
   }
   req.userId = userId;
   next();
 }
 
-
 // Get all notes for a user
-app.get('/notes', authenticateUser, (req, res) => {
+app.get("/notes", authenticateUser, (req, res) => {
   db.all(
-    'SELECT * FROM notes WHERE user_id = ? ORDER BY updated_at DESC',
+    "SELECT * FROM notes WHERE user_id = ? ORDER BY updated_at DESC",
     [req.userId],
     (err, notes) => {
       if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Internal server error' });
+        console.error("Database error:", err);
+        return res.status(500).json({ error: "Internal server error" });
       }
       res.json(notes);
     }
@@ -111,54 +106,51 @@ app.get('/notes', authenticateUser, (req, res) => {
 });
 
 // Create a new note
-app.post('/notes', authenticateUser, (req, res) => {
-  console.log('Received note creation request with body:', req.body);
-  console.log('User ID:', req.userId);
+app.post("/notes", authenticateUser, (req, res) => {
+  console.log("Received note creation request with body:", req.body);
+  console.log("User ID:", req.userId);
 
   const { title, content } = req.body;
 
-  if (!content) {
-    return res.status(400).json({ error: 'Content is required' });
+  if (!title || !content) {
+    return res.status(400).json({ error: "Title and content are required" });
   }
 
-  const finalTitle = title || content.split('\n')[0]?.substring(0, 50) || 'Untitled';
-  const finalContent = content;
-
   db.run(
-    'INSERT INTO notes (user_id, title, content) VALUES (?, ?, ?)',
-    [req.userId, finalTitle, finalContent],
+    "INSERT INTO notes (user_id, title, content) VALUES (?, ?, ?)",
+    [req.userId, title, content],
     function (error) {
       if (error) {
-        console.error('Database error:', error);
+        console.error("Database error:", error);
         return res.status(500).json({
           error: "Internal server error",
-          details: error.message
+          details: error.message,
         });
       }
-      console.log('Note inserted with ID:', this.lastID);
+      console.log("Note inserted with ID:", this.lastID);
       res.status(201).json({
         id: this.lastID,
         user_id: req.userId,
-        title: finalTitle,
-        content: finalContent,
+        title: title,
+        content: content,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       });
     }
   );
 });
 
 // Get a single note
-app.get('/notes/:id', authenticateUser, (req, res) => {
+app.get("/notes/:id", authenticateUser, (req, res) => {
   db.get(
-    'SELECT * FROM notes WHERE id = ? AND user_id = ?',
+    "SELECT * FROM notes WHERE id = ? AND user_id = ?",
     [req.params.id, req.userId],
     (err, note) => {
       if (err) {
-        return res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: "Internal server error" });
       }
       if (!note) {
-        return res.status(404).json({ error: 'Note not found' });
+        return res.status(404).json({ error: "Note not found" });
       }
       res.json(note);
     }
@@ -166,44 +158,48 @@ app.get('/notes/:id', authenticateUser, (req, res) => {
 });
 
 // Update a note
-app.put('/notes/:id', authenticateUser, (req, res) => {
-  const { title, content = "" } = req.body;
+app.put("/notes/:id", authenticateUser, (req, res) => {
+  const { title, content } = req.body;
+
+  if (!title || content === undefined) {
+    return res.status(400).json({ error: "Title and content are required" });
+  }
 
   db.run(
     `UPDATE notes 
      SET title = ?, content = ?, updated_at = CURRENT_TIMESTAMP 
      WHERE id = ? AND user_id = ?`,
-    [title || 'Untitled', content, req.params.id, req.userId],
+    [title, content, req.params.id, req.userId],
     function (err) {
       if (err) {
-        return res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: "Internal server error" });
       }
       if (this.changes === 0) {
-        return res.status(404).json({ error: 'Note not found or not owned by user' });
+        return res.status(404).json({ error: "Note not found or not owned by user" });
       }
       res.json({
         success: true,
         updatedNote: {
           id: req.params.id,
-          title: title || 'Untitled',
-          content: content || ""
-        }
+          title: title,
+          content: content,
+        },
       });
     }
   );
 });
 
 // Delete a note
-app.delete('/notes/:id', authenticateUser, (req, res) => {
+app.delete("/notes/:id", authenticateUser, (req, res) => {
   db.run(
-    'DELETE FROM notes WHERE id = ? AND user_id = ?',
+    "DELETE FROM notes WHERE id = ? AND user_id = ?",
     [req.params.id, req.userId],
     function (err) {
       if (err) {
-        return res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: "Internal server error" });
       }
       if (this.changes === 0) {
-        return res.status(404).json({ error: 'Note not found or not owned by user' });
+        return res.status(404).json({ error: "Note not found or not owned by user" });
       }
       res.json({ success: true });
     }
@@ -212,8 +208,8 @@ app.delete('/notes/:id', authenticateUser, (req, res) => {
 
 const PORT = 5000;
 
-app.get('/', (req, res) => {
-  res.send('Backend server is running!');
+app.get("/", (req, res) => {
+  res.send("Backend server is running!");
 });
 
 app.listen(PORT, () => {

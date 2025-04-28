@@ -10,7 +10,6 @@ function Home() {
     <Sidebar />
     
     <div className="flex-1 p-6 overflow-y-auto">
-      <h1 className="text-2xl">Welcome to KeepIt!</h1>
       {user && (
         <p className="mt-2">Logged in as: <strong>{user.email}</strong></p>
       )}

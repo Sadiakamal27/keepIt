@@ -16,7 +16,7 @@ export const Sidebar = () => {
   ];
 
   const filteredNotes = notes.filter(note =>
-    note.content.toLowerCase().includes(searchQuery.toLowerCase())
+    note.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleDelete = async (id) => {
@@ -46,8 +46,8 @@ export const Sidebar = () => {
           <button
             key={route.path}
             onClick={() => navigate(route.path)}
-            className={`flex items-center gap-3 w-full p-3 rounded-lg hover:bg-gray-100 ${
-              location.pathname === route.path ? "bg-blue-50 text-blue-600" : ""
+            className={`flex items-center gap-3 w-full p-3 rounded-lg hover:bg-orange-600 ${
+              location.pathname === route.path ? "bg-orange-700 text-white" : ""
             }`}
           >
             <route.icon className="h-5 w-5" />
@@ -76,8 +76,7 @@ export const Sidebar = () => {
                 >
                   <FileText className="h-5 w-5 text-muted-foreground" />
                   <div className="truncate">
-                    {note.content.substring(0, 30)}
-                    {note.content.length > 30 && "..."}
+                    {note.title}
                   </div>
                 </div>
                 <button
