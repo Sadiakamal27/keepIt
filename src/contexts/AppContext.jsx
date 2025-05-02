@@ -3,7 +3,6 @@ import { createContext, useContext, useState, useEffect } from "react";
 const AppContext = createContext();
 
 export function AppProvider({ children }) {
-
   const [user, setUser] = useState(null);
   const [notes, setNotes] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,7 +38,7 @@ export function AppProvider({ children }) {
       const userData = { email: data.email, id: data.id };
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
-      await fetchNotes(data.id); 
+      await fetchNotes(data.id);
       return true;
     } catch (error) {
       setError(error.message);
@@ -80,13 +79,12 @@ export function AppProvider({ children }) {
     setNotes([]);
   };
 
-
   const fetchNotes = async (userId) => {
     if (!userId) return;
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://localhost:5000/notes?user=${userId}`, {
+      const response = await fetch("http://localhost:5000/notes", {
         headers: {
           "Content-Type": "application/json",
           "user-id": userId,
@@ -121,7 +119,7 @@ export function AppProvider({ children }) {
           "user-id": user.id,
         },
         body: JSON.stringify({
-          title: noteData.title, 
+          title: noteData.title,
           content: noteData.content,
         }),
       });
@@ -132,7 +130,7 @@ export function AppProvider({ children }) {
       }
 
       const createdNote = await response.json();
-      setNotes(prev => [...prev, createdNote]);
+      setNotes((prev) => [...prev, createdNote]);
       return true;
     } catch (error) {
       setError(error.message);
@@ -148,8 +146,8 @@ export function AppProvider({ children }) {
     setError(null);
 
     try {
-      setNotes(prev =>
-        prev.map(note =>
+      setNotes((prev) =>
+        prev.map((note) =>
           note.id === id ? { ...note, title, content } : note
         )
       );
@@ -160,14 +158,14 @@ export function AppProvider({ children }) {
           "Content-Type": "application/json",
           "user-id": user.id,
         },
-        body: JSON.stringify({ title, content }), 
+        body: JSON.stringify({ title, content }),
       });
 
       if (!response.ok) throw new Error("Update failed");
       return true;
     } catch (error) {
       setError(error.message);
-      await fetchNotes(user.id); 
+      await fetchNotes(user.id);
       return false;
     } finally {
       setIsLoading(false);
@@ -180,7 +178,7 @@ export function AppProvider({ children }) {
     setError(null);
 
     try {
-      setNotes(prev => prev.filter(note => note.id !== id));
+      setNotes((prev) => prev.filter((note) => note.id !== id));
 
       const response = await fetch(`http://localhost:5000/notes/${id}`, {
         method: "DELETE",
@@ -210,18 +208,20 @@ export function AppProvider({ children }) {
   }, [user?.id]);
 
   return (
-    <AppContext.Provider value={{
-      user,
-      notes,
-      isLoading,
-      error,
-      login,
-      logout,
-      signup,
-      addNote,
-      updateNote,
-      deleteNote,
-    }}>
+    <AppContext.Provider
+      value={{
+        user,
+        notes,
+        isLoading,
+        error,
+        login,
+        logout,
+        signup,
+        addNote,
+        updateNote,
+        deleteNote,
+      }}
+    >
       {children}
     </AppContext.Provider>
   );

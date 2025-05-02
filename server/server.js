@@ -107,9 +107,6 @@ app.get("/notes", authenticateUser, (req, res) => {
 
 // Create a new note
 app.post("/notes", authenticateUser, (req, res) => {
-  console.log("Received note creation request with body:", req.body);
-  console.log("User ID:", req.userId);
-
   const { title, content } = req.body;
 
   if (!title || !content) {
@@ -127,7 +124,6 @@ app.post("/notes", authenticateUser, (req, res) => {
           details: error.message,
         });
       }
-      console.log("Note inserted with ID:", this.lastID);
       res.status(201).json({
         id: this.lastID,
         user_id: req.userId,
