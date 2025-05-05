@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppContext } from "../contexts/AppContext";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,14 +9,18 @@ import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
-import {
-  $getRoot,
-  $createParagraphNode,
-  $createTextNode,
-  $setSelection,
-} from "lexical";
+import { $getRoot, $createParagraphNode, $createTextNode } from "lexical";
 import ToolbarPlugin from "./ToolbarPlugin";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+
+
+const debounce = (func, wait) => {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+};
 
 const editorConfig = {
   namespace: "KeepitEditor",
@@ -40,21 +44,23 @@ function InitializeEditorPlugin({ initialContent }) {
   useEffect(() => {
     editor.update(() => {
       const root = $getRoot();
-      root.clear();
-
-      if (initialContent) {
+      if (initialContent === null || initialContent === undefined || initialContent === "") {
+        root.clear();
+        const paragraph = $createParagraphNode();
+        paragraph.append($createTextNode(""));
+        root.append(paragraph);
+      } else {
         try {
           const editorState = editor.parseEditorState(initialContent);
           editor.setEditorState(editorState);
         } catch (e) {
           console.error("Failed to parse editor state:", e);
+          root.clear();
+          const paragraph = $createParagraphNode();
+          paragraph.append($createTextNode(""));
+          root.append(paragraph);
         }
-      } else {
-        const paragraph = $createParagraphNode();
-        paragraph.append($createTextNode(""));
-        root.append(paragraph);
       }
-      $setSelection(null);
     });
   }, [editor, initialContent]);
 
@@ -66,12 +72,22 @@ function NoteTextarea() {
   const navigate = useNavigate();
   const { notes, isLoading, updateNote, addNote } = useAppContext();
   const [title, setTitle] = useState("");
-  const [editorState, setEditorState] = useState(null);
+  const [editorInstance, setEditorInstance] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const contentEditableRef = useRef(null); 
   const currentNote = id ? notes.find((note) => String(note.id) === String(id)) : null;
+
+  const debouncedSetEditorInstance = useCallback(
+    debounce((jsonState) => {
+      setEditorInstance(jsonState);
+    }, 1000),
+    []
+  );
 
   useEffect(() => {
     if (id && !currentNote && !isLoading) {
+      setIsFetching(true);
       const fetchNote = async () => {
         try {
           const response = await fetch(`http://localhost:5000/notes/${id}`, {
@@ -84,41 +100,58 @@ function NoteTextarea() {
           });
           if (!response.ok) throw new Error("Failed to fetch note");
           const note = await response.json();
-          setTitle(note.title);
-          setEditorState(note.content);
+          setTitle(note.title || "");
+          setEditorInstance(note.content || ""); 
         } catch (error) {
           console.error("Fetch note error:", error);
           setTitle("");
-          setEditorState(null);
+          setEditorInstance(""); 
           navigate("/");
+        } finally {
+          setIsFetching(false);
         }
       };
       fetchNote();
     } else if (currentNote) {
-      setTitle(currentNote.title);
-      setEditorState(currentNote.content);
+      setTitle(currentNote.title || "");
+      setEditorInstance(currentNote.content || "");
     } else {
       setTitle("");
-      setEditorState(null);
+      setEditorInstance(""); 
     }
   }, [currentNote, id, isLoading, navigate]);
 
+  const onChange = (editorState, editor) => {
+    editorState.read(() => {
+      const jsonState = JSON.stringify(editorState.toJSON());
+      debouncedSetEditorInstance(jsonState); 
+    });
+  };
+
   const handleSave = async () => {
-    if (!editorState || !title.trim()) {
-      alert("Title and content cannot be empty!");
+    if (!title.trim()) {
+      alert("Title cannot be empty!");
       return;
     }
 
     setIsSaving(true);
     try {
+      let currentEditorState = editorInstance;
+
+      if (!currentEditorState) {
+        alert("Content cannot be empty!");
+        return;
+      }
+
       if (currentNote) {
-        const success = await updateNote(currentNote.id, title, editorState);
+        const success = await updateNote(currentNote.id, title, currentEditorState);
         if (!success) throw new Error("Failed to update note");
       } else {
-        const success = await addNote({ title, content: editorState });
+        const success = await addNote({ title, content: currentEditorState });
         if (success) {
           setTitle("");
-          setEditorState(null);
+          setEditorInstance("");
+          navigate("/");
         } else {
           throw new Error("Failed to create note");
         }
@@ -130,10 +163,9 @@ function NoteTextarea() {
     }
   };
 
-  const onChange = (editorState) => {
-    const editorStateJSON = JSON.stringify(editorState.toJSON());
-    setEditorState(editorStateJSON);
-  };
+  if (isFetching) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="flex flex-col h-full p-4 space-y-4" dir="ltr">
@@ -147,22 +179,11 @@ function NoteTextarea() {
           e.target.style.height = `${Math.min(e.target.scrollHeight, 48)}px`;
         }}
       />
-      <div className="lexical-editor-wrapper" dir="ltr">
+      <div className="lexical-editor-wrapper">
         <LexicalComposer initialConfig={editorConfig}>
           <ToolbarPlugin />
           <RichTextPlugin
-            contentEditable={
-              <ContentEditable
-                className="flex-1 min-h-[200px] editor-input"
-                dir="ltr"
-                style={{
-                  position: 'relative',
-                  direction: 'ltr !important',
-                  unicodeBidi: 'normal !important',
-                  textAlign: 'left !important',
-                }}
-              />
-            }
+            contentEditable={<ContentEditable ref={contentEditableRef} className="flex-1 min-h-[200px] editor-input" />}
             placeholder={
               <div
                 className="absolute top-[10px] left-[20px] mt-13 text-gray-400 pointer-events-none"
@@ -175,7 +196,7 @@ function NoteTextarea() {
           />
           <HistoryPlugin />
           <OnChangePlugin onChange={onChange} />
-          <InitializeEditorPlugin initialContent={editorState} />
+          <InitializeEditorPlugin initialContent={editorInstance} />
         </LexicalComposer>
       </div>
       <div className="flex justify-end">
