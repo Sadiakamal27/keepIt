@@ -1,23 +1,23 @@
 import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/router";
+import { useParams } from "react-router-dom";
 import { useAppContext } from "../contexts/AppContext";
-import NoteTextarea from "./NoteTextarea";
+import NoteTextarea from "../components/NoteTextarea";
 
 export default function CollaborateNoteView() {
-  const router = useRouter();
-  const { noteId } = router.query;
+    const { noteId } = useParams();
+      
   const { user, fetchNoteByToken } = useAppContext();
   const [collaborationToken, setCollaborationToken] = useState(null);
   const [permission, setPermission] = useState("read");
 
-  // Extract token from URL if present
+
   useEffect(() => {
     if (router.query.token) {
       setCollaborationToken(router.query.token);
     }
   }, [router.query]);
 
-  // Fetch note data when component mounts
+  
   useEffect(() => {
     if (!noteId) return;
 

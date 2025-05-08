@@ -208,7 +208,7 @@ const server = app.listen(5000, () => {
 const wss = new WebSocketServer({ noServer: true });
 
 wss.on("connection", (ws, req) => {
-  const noteId = req.url.split('/')[2]; // Extract noteId from URL
+  const noteId = req.url.split('/')[2]; 
   
   ws.on("message", (message) => {
     // Broadcast updates to all clients in the same note room

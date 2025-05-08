@@ -6,7 +6,7 @@ import Home from "./pages/Home";
 import { useAppContext } from "./contexts/AppContext";
 import { Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
-
+import CollaborateNoteView from "./pages/CollaborateNoteView";
 
 export default function App() {
   const { user } = useAppContext();
@@ -39,7 +39,7 @@ export default function App() {
             path="/new"
             element={user ? <Home /> : <Navigate to="/login" replace />}
           />
-         
+         <Route path="/collaborate/:noteId" element={<CollaborateNoteView />} />
         </Routes>
       </main>
     </div>

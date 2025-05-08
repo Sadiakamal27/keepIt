@@ -77,7 +77,7 @@ function ShareNote({ noteId }) {
     try {
       const collaborators = await fetchCollaborators(noteId);
       setCollaborators(collaborators);
-      setShowAccessManager(!showAccessManager); // Toggle visibility
+      setShowAccessManager(!showAccessManager); 
     } catch (error) {
       console.error("Failed to fetch collaborators:", error);
     }

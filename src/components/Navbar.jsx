@@ -7,15 +7,15 @@ function Navbar() {
   const { user } = useAppContext();
   const location = useLocation();
 
-  // More robust ID extraction
+  
   const getNoteId = () => {
-    // Match both /note/:id and /notes/:id patterns
+   
     const match = location.pathname.match(/\/(?:note|notes)\/([^/]+)/);
     return match ? match[1] : null;
   };
 
   const noteId = getNoteId();
-  console.log("Current noteId:", noteId); // Debug log
+  console.log("Current noteId:", noteId); 
 
   return (
     <nav className="bg-amber-600 p-4">
