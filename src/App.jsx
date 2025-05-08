@@ -7,6 +7,7 @@ import { useAppContext } from "./contexts/AppContext";
 import { Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
 
+
 export default function App() {
   const { user } = useAppContext();
 
@@ -15,7 +16,6 @@ export default function App() {
       <Navbar />
       <main className="flex-grow flex items-center justify-center bg-gray-50">
         <Routes>
-        
           <Route
             path="/login"
             element={!user ? <Login /> : <Navigate to="/" replace />}
@@ -24,16 +24,13 @@ export default function App() {
             path="/signup"
             element={!user ? <Signup /> : <Navigate to="/" replace />}
           />
-
-          <Route
-           
+          <Route          
             element={user ? <Layout /> : <Navigate to="/login" replace />}
           />
            <Route
             path="/"
             element={user ? <Home /> : <Navigate to="/login" replace />}
           />
-
           <Route
             path="/notes/:id"
             element={user ? <Home /> : <Navigate to="/login" replace />}
@@ -42,6 +39,7 @@ export default function App() {
             path="/new"
             element={user ? <Home /> : <Navigate to="/login" replace />}
           />
+         
         </Routes>
       </main>
     </div>

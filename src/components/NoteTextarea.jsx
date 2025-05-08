@@ -12,6 +12,7 @@ import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { $getRoot, $createParagraphNode, $createTextNode } from "lexical";
 import ToolbarPlugin from "./ToolbarPlugin";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import ShareNote from "./ShareNote";
 
 
 const debounce = (func, wait) => {
@@ -168,6 +169,8 @@ function NoteTextarea() {
   }
 
   return (
+    
+    
     <div className="flex flex-col h-full p-4 space-y-4" dir="ltr">
       <Textarea
         value={title}
@@ -179,6 +182,7 @@ function NoteTextarea() {
           e.target.style.height = `${Math.min(e.target.scrollHeight, 48)}px`;
         }}
       />
+      
       <div className="lexical-editor-wrapper">
         <LexicalComposer initialConfig={editorConfig}>
           <ToolbarPlugin />

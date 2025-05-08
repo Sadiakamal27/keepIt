@@ -1,24 +1,39 @@
-import { Link } from "react-router-dom";
-import { useAppContext } from "../contexts/AppContext"; // Changed from useAuth
-import { Button } from "@/components/ui/button";
+import { Link, useLocation } from "react-router-dom";
+import { useAppContext } from "../contexts/AppContext";
 import LogoutButton from "./LogoutButton";
+import ShareNote from "./ShareNote";
 
 function Navbar() {
-  const { user } = useAppContext(); // Changed from useAuth
+  const { user } = useAppContext();
+  const location = useLocation();
+
+  // More robust ID extraction
+  const getNoteId = () => {
+    // Match both /note/:id and /notes/:id patterns
+    const match = location.pathname.match(/\/(?:note|notes)\/([^/]+)/);
+    return match ? match[1] : null;
+  };
+
+  const noteId = getNoteId();
+  console.log("Current noteId:", noteId); // Debug log
 
   return (
-    <nav className="bg-amber-600 p-3 shadow-md w-full">
+    <nav className="bg-amber-600 p-4">
       <div className="max-w-7xl mx-auto flex justify-between items-center px-4">
-        <Link to="/" className="flex items-center mr-auto">
-          <img
-            src="/keepitlogo.png"
-            alt="KeepIt Logo"
-            className="h-9 w-auto"
-          />
+        <Link to="/" className="flex items-center">
+          <img src="/keepitlogo.png" alt="KeepIt Logo" className="h-9 w-auto" />
           <h1 className="text-xl font-bold text-white ml-2">KeepIt</h1>
         </Link>
-      
-        {user && <LogoutButton />}
+        {user && (
+          <div className="flex items-center gap-4">
+            <LogoutButton />
+            {noteId && (
+              <div className="relative">
+                <ShareNote noteId={noteId} />
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </nav>
   );
