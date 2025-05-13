@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { io } from "socket.io-client";
 
 const AppContext = createContext();
 
@@ -8,7 +7,7 @@ export function AppProvider({ children }) {
   const [notes, setNotes] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [socket, setSocket] = useState(null);
+  const [userPermission, setUserPermission] = useState("read");
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -20,54 +19,6 @@ export function AppProvider({ children }) {
       }
     }
   }, []);
-
-  useEffect(() => {
-    const newSocket = io("http://localhost:5000", { autoConnect: false });
-    setSocket(newSocket);
-
-    return () => {
-      newSocket.disconnect();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (socket && user?.id) {
-      socket.connect();
-      socket.on("connect", () => {
-        console.log("Connected to WebSocket server");
-      });
-
-      socket.on("noteUpdate", ({ id, title, content, updated_at }) => {
-        setNotes((prev) =>
-          prev.map((note) =>
-            note.id === id ? { ...note, title, content, updated_at } : note
-          )
-        );
-      });
-
-      socket.on("joinSuccess", ({ noteId }) => {
-        console.log(`Successfully joined note: ${noteId}`);
-      });
-
-      socket.on("joinError", ({ message }) => {
-        setError(message);
-      });
-
-      socket.on("updateError", ({ message }) => {
-        setError(message);
-      });
-
-      return () => {
-        socket.off("connect");
-        socket.off("noteUpdate");
-        socket.off("joinSuccess");
-        socket.off("joinError");
-        socket.off("updateError");
-      };
-    } else if (socket) {
-      socket.disconnect();
-    }
-  }, [socket, user?.id]);
 
   const login = async (email, password) => {
     setIsLoading(true);
@@ -127,9 +78,7 @@ export function AppProvider({ children }) {
     localStorage.removeItem("user");
     setUser(null);
     setNotes([]);
-    if (socket) {
-      socket.disconnect();
-    }
+    setUserPermission("read");
   };
 
   const fetchNotes = async (userId) => {
@@ -155,32 +104,83 @@ export function AppProvider({ children }) {
     }
   };
 
-  const fetchNoteByToken = async (noteId, collaborationToken) => {
+  const fetchNoteByToken = async (noteId, token) => {
+    if (!noteId || !token) return null;
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://localhost:5000/notes/collaborate/${noteId}`, {
+      const response = await fetch(`http://localhost:5000/notes/${noteId}/collaborate`, {
         headers: {
           "Content-Type": "application/json",
-          "collaboration-token": collaborationToken,
+          Authorization: `Bearer ${token}`,
         },
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch note");
-      }
-
-      const note = await response.json();
-      setNotes([note]);
-      if (socket) {
-        socket.connect();
-        socket.emit("joinNote", { noteId, collaborationToken });
-      }
-      return note;
+      if (!response.ok) throw new Error("Failed to fetch note with token");
+      const data = await response.json();
+      setUserPermission(data.permission || "read");
+      return data;
     } catch (error) {
       setError(error.message);
       return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchUserPermission = async (noteId, token = null) => {
+    if (!noteId) {
+      setUserPermission("read");
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      let response;
+      if (token) {
+        response = await fetch(`http://localhost:5000/notes/${noteId}/permission`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      } else {
+        response = await fetch(`http://localhost:5000/notes/${noteId}/permission`, {
+          headers: {
+            "Content-Type": "application/json",
+            "user-id": user?.id || "",
+          },
+        });
+      }
+      if (!response.ok) throw new Error("Failed to fetch permission");
+      const { permission } = await response.json();
+      setUserPermission(permission || "read");
+    } catch (error) {
+      console.error("Error fetching permission:", error);
+      setUserPermission("read");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchCollaborators = async (noteId) => {
+    if (!noteId || !user?.id) return [];
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`http://localhost:5000/notes/${noteId}/collaborators`, {
+        headers: {
+          "Content-Type": "application/json",
+          "user-id": user.id,
+        },
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch collaborators");
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      setError(error.message);
+      return [];
     } finally {
       setIsLoading(false);
     }
@@ -224,8 +224,8 @@ export function AppProvider({ children }) {
     }
   };
 
-  const updateNote = async (id, title, content, collaborationToken = null) => {
-    if (!user?.id && !collaborationToken) return false;
+  const updateNote = async (id, title, content) => {
+    if (!user?.id) return false;
     setIsLoading(true);
     setError(null);
 
@@ -236,29 +236,12 @@ export function AppProvider({ children }) {
         )
       );
 
-      if (socket) {
-        socket.emit("noteUpdate", {
-          noteId: id,
-          title,
-          content,
-          userId: user?.id,
-          collaborationToken,
-        });
-      }
-
-      const headers = {
-        "Content-Type": "application/json",
-      };
-      if (user?.id) {
-        headers["user-id"] = user.id;
-      }
-      if (collaborationToken) {
-        headers["collaboration-token"] = collaborationToken;
-      }
-
       const response = await fetch(`http://localhost:5000/notes/${id}`, {
         method: "PUT",
-        headers,
+        headers: {
+          "Content-Type": "application/json",
+          "user-id": user.id,
+        },
         body: JSON.stringify({ title, content }),
       });
 
@@ -266,9 +249,7 @@ export function AppProvider({ children }) {
       return true;
     } catch (error) {
       setError(error.message);
-      if (user?.id) {
-        await fetchNotes(user.id);
-      }
+      await fetchNotes(user.id);
       return false;
     } finally {
       setIsLoading(false);
@@ -302,77 +283,6 @@ export function AppProvider({ children }) {
     }
   };
 
-  const generateCollaborationToken = async (noteId) => {
-    if (!user?.id) {
-      setError("You must be logged in to share notes");
-      return null;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`http://localhost:5000/notes/${noteId}/collaborate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "user-id": user.id,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate collaboration token");
-      }
-
-      const { token } = await response.json();
-      if (socket) {
-        socket.emit("joinNote", { noteId, userId: user.id });
-      }
-      return token;
-    } catch (error) {
-      setError(error.message);
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchCollaborators = async (noteId) => {
-    if (!user?.id) return [];
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`http://localhost:5000/notes/${noteId}/collaborators`, {
-        headers: {
-          "Content-Type": "application/json",
-          "user-id": user.id,
-        },
-      });
-
-      if (!response.ok) throw new Error("Failed to fetch collaborators");
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      setError(error.message);
-      return [];
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const joinNoteRoom = (noteId, collaborationToken = null) => {
-    if (socket) {
-      socket.emit("joinNote", {
-        noteId,
-        userId: user?.id,
-        collaborationToken,
-      });
-    }
-  };
-
   useEffect(() => {
     if (user?.id) {
       fetchNotes(user.id);
@@ -394,10 +304,10 @@ export function AppProvider({ children }) {
         addNote,
         updateNote,
         deleteNote,
-        generateCollaborationToken,
-        fetchCollaborators,
         fetchNoteByToken,
-        joinNoteRoom,
+        fetchCollaborators,
+        fetchUserPermission,
+        userPermission,
       }}
     >
       {children}

@@ -16,7 +16,11 @@ function Login() {
     e.preventDefault()
     const success = login(email, password)
     if (success)
-  {navigate("/")}
+  {
+    alert("Login successfull")
+    navigate("/")
+    
+  }
      else alert("Invalid Login")
   }
 

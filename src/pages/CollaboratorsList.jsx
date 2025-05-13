@@ -1,16 +1,17 @@
+// CollaboratorsList.jsx
 import { useState, useEffect } from "react";
 
-function CollaboratorsList({ noteId }) {
+function CollaboratorsList({ noteid }) {
   const [collaborators, setCollaborators] = useState([]);
 
   useEffect(() => {
-    if (noteId) {
-      fetch(`http://localhost:5000/collaborators/${noteId}`)
+    if (noteid) {
+      fetch(`http://localhost:5000/notes/${noteid}/collaborators`)
         .then((res) => res.json())
-        .then((data) => setCollaborators(data.collaborators))
+        .then((data) => setCollaborators(data))
         .catch((err) => console.error("Failed to fetch collaborators", err));
     }
-  }, [noteId]);
+  }, [noteid]);
 
   return (
     <div>

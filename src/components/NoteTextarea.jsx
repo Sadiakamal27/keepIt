@@ -14,7 +14,6 @@ import ToolbarPlugin from "./ToolbarPlugin";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import ShareNote from "./ShareNote";
 
-
 const debounce = (func, wait) => {
   let timeout;
   return (...args) => {
@@ -68,7 +67,7 @@ function InitializeEditorPlugin({ initialContent }) {
   return null;
 }
 
-function NoteTextarea() {
+function NoteTextarea({ initialContent, initialTitle, permission }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { notes, isLoading, updateNote, addNote } = useAppContext();
@@ -76,7 +75,7 @@ function NoteTextarea() {
   const [editorInstance, setEditorInstance] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
-  const contentEditableRef = useRef(null); 
+  const contentEditableRef = useRef(null);
   const currentNote = id ? notes.find((note) => String(note.id) === String(id)) : null;
 
   const debouncedSetEditorInstance = useCallback(
@@ -102,11 +101,11 @@ function NoteTextarea() {
           if (!response.ok) throw new Error("Failed to fetch note");
           const note = await response.json();
           setTitle(note.title || "");
-          setEditorInstance(note.content || ""); 
+          setEditorInstance(note.content || "");
         } catch (error) {
           console.error("Fetch note error:", error);
           setTitle("");
-          setEditorInstance(""); 
+          setEditorInstance("");
           navigate("/");
         } finally {
           setIsFetching(false);
@@ -116,22 +115,31 @@ function NoteTextarea() {
     } else if (currentNote) {
       setTitle(currentNote.title || "");
       setEditorInstance(currentNote.content || "");
+    } else if (initialTitle !== undefined) {
+      setTitle(initialTitle);
+      setEditorInstance(initialContent || "");
     } else {
       setTitle("");
-      setEditorInstance(""); 
+      setEditorInstance("");
     }
-  }, [currentNote, id, isLoading, navigate]);
+  }, [currentNote, id, isLoading, navigate, initialContent, initialTitle]);
 
   const onChange = (editorState, editor) => {
     editorState.read(() => {
       const jsonState = JSON.stringify(editorState.toJSON());
-      debouncedSetEditorInstance(jsonState); 
+      debouncedSetEditorInstance(jsonState);
     });
   };
 
   const handleSave = async () => {
     if (!title.trim()) {
       alert("Title cannot be empty!");
+      return;
+    }
+    
+    // Enforce permission check
+    if (permission && permission !== "write" && permission !== "full") {
+      alert("You do not have permission to edit this note.");
       return;
     }
 
@@ -169,8 +177,6 @@ function NoteTextarea() {
   }
 
   return (
-    
-    
     <div className="flex flex-col h-full p-4 space-y-4" dir="ltr">
       <Textarea
         value={title}
@@ -181,13 +187,20 @@ function NoteTextarea() {
           e.target.style.height = "auto";
           e.target.style.height = `${Math.min(e.target.scrollHeight, 48)}px`;
         }}
+        readOnly={permission === "read"}
       />
       
       <div className="lexical-editor-wrapper">
         <LexicalComposer initialConfig={editorConfig}>
-          <ToolbarPlugin />
+          <ToolbarPlugin disabled={permission === "read"} />
           <RichTextPlugin
-            contentEditable={<ContentEditable ref={contentEditableRef} className="flex-1 min-h-[200px] editor-input" />}
+            contentEditable={
+              <ContentEditable 
+                ref={contentEditableRef} 
+                className="flex-1 min-h-[200px] editor-input"
+                readOnly={permission === "read"} 
+              />
+            }
             placeholder={
               <div
                 className="absolute top-[10px] left-[20px] mt-13 text-gray-400 pointer-events-none"
@@ -204,7 +217,10 @@ function NoteTextarea() {
         </LexicalComposer>
       </div>
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={isSaving || isLoading}>
+        <Button 
+          onClick={handleSave} 
+          disabled={isSaving || isLoading || permission === "read"}
+        >
           {isSaving ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
