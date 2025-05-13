@@ -12,7 +12,7 @@ function ShareNote({ noteId }) {
   const { user } = useAppContext();
   const [copied, setCopied] = useState(false);
   const [isReady, setIsReady] = useState(false);
-  const [permission, setPermission] = useState("read"); // Default to read
+  const [permission, setPermission] = useState("read"); 
 
   useEffect(() => {
     if (noteId) {
@@ -37,7 +37,7 @@ function ShareNote({ noteId }) {
           "Content-Type": "application/json",
           "user-id": user.id,
         },
-        body: JSON.stringify({ permission }), // Include permission in request
+        body: JSON.stringify({ permission }), 
       });
       if (!response.ok) throw new Error("Failed to generate share token");
       const { token } = await response.json();

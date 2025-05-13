@@ -1,4 +1,3 @@
-// CollaboratorsList.jsx
 import { useState, useEffect } from "react";
 
 function CollaboratorsList({ noteid }) {
