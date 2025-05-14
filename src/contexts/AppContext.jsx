@@ -105,27 +105,31 @@ export function AppProvider({ children }) {
   };
 
   const fetchNoteByToken = async (noteId, token) => {
-    if (!noteId || !token) return null;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`http://localhost:5000/notes/${noteId}/collaborate`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) throw new Error("Failed to fetch note with token");
-      const data = await response.json();
-      setUserPermission(data.permission || "read");
-      return data;
-    } catch (error) {
-      setError(error.message);
-      return null;
-    } finally {
-      setIsLoading(false);
+  if (!noteId || !token) return null;
+  setIsLoading(true);
+  setError(null);
+  try {
+    const response = await fetch(`http://localhost:5000/notes/${noteId}/collaborate`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to fetch note with token");
     }
-  };
+    const data = await response.json();
+    setUserPermission(data.permission || "read");
+    return data;
+  } catch (error) {
+    console.error("Fetch note by token error:", error);
+    setError(error.message);
+    return null;
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const fetchUserPermission = async (noteId, token = null) => {
     if (!noteId) {
@@ -224,37 +228,52 @@ export function AppProvider({ children }) {
     }
   };
 
-  const updateNote = async (id, title, content) => {
-    if (!user?.id) return false;
-    setIsLoading(true);
-    setError(null);
+  const updateNote = async (id, title, content, token = null) => {
+  setIsLoading(true);
+  setError(null);
 
-    try {
-      setNotes((prev) =>
-        prev.map((note) =>
-          note.id === id ? { ...note, title, content } : note
-        )
-      );
-
-      const response = await fetch(`http://localhost:5000/notes/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "user-id": user.id,
-        },
-        body: JSON.stringify({ title, content }),
-      });
-
-      if (!response.ok) throw new Error("Update failed");
-      return true;
-    } catch (error) {
-      setError(error.message);
-      await fetchNotes(user.id);
-      return false;
-    } finally {
-      setIsLoading(false);
+  try {
+    const headers = { "Content-Type": "application/json" };
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+      console.log("Updating note with token for ID:", id, "Headers:", headers);
+    } else if (user?.id) {
+      headers["user-id"] = user.id;
+      console.log("Updating note with user ID:", user.id, "for ID:", id, "Headers:", headers);
+    } else {
+      throw new Error("No user or token provided");
     }
-  };
+
+    const response = await fetch(`http://localhost:5000/notes/${id}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ title, content }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Update note response error for ID:", id, "Error:", errorData);
+      throw new Error(errorData.error || "Update failed");
+    }
+
+    if (user?.id) {
+      setNotes((prev) =>
+        prev.map((note) => (note.id === id ? { ...note, title, content } : note))
+      );
+    }
+    console.log("Update note successful for ID:", id);
+    return true;
+  } catch (error) {
+    console.error("Update note error for ID:", id, "Error:", error);
+    setError(error.message);
+    if (user?.id) {
+      await fetchNotes(user.id);
+    }
+    return false;
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const deleteNote = async (id) => {
     if (!user?.id) return false;

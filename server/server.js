@@ -25,12 +25,42 @@ db.serialize(() => {
     `CREATE TABLE IF NOT EXISTS collaborators (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       note_id INTEGER NOT NULL,
-      email TEXT,
-      permission TEXT NOT NULL,
-      token TEXT UNIQUE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(note_id) REFERENCES notes(id)
     )`
+  );
+
+  // Add the email column if it doesn't exist
+  db.run(
+    `ALTER TABLE collaborators ADD COLUMN email TEXT`,
+    (err) => {
+      if (err && !err.message.includes("duplicate column name")) {
+        console.error("Error adding email column to collaborators:", err);
+      } else {
+        console.log("Email column added to collaborators table (or already exists).");
+      }
+    }
+  );
+  db.run(
+    `ALTER TABLE collaborators ADD COLUMN permission TEXT NOT NULL DEFAULT 'read'`,
+    (err) => {
+      if (err && !err.message.includes("duplicate column name")) {
+        console.error("Error adding permission column to collaborators:", err);
+      } else {
+        console.log("Permission column added to collaborators table (or already exists).");
+      }
+    }
+  );
+
+  db.run(
+    `ALTER TABLE collaborators ADD COLUMN token TEXT UNIQUE`,
+    (err) => {
+      if (err && !err.message.includes("duplicate column name")) {
+        console.error("Error adding token column to collaborators:", err);
+      } else {
+        console.log("Token column added to collaborators table (or already exists).");
+      }
+    }
   );
 });
 
@@ -139,6 +169,11 @@ app.post("/notes", authenticateUser, (req, res) => {
 app.post("/notes/:noteId/share-token", authenticateUser, (req, res) => {
   const { noteId } = req.params;
   const userId = req.userId;
+  const { permission } = req.body;
+
+  if (!['read', 'full'].includes(permission)) {
+    return res.status(400).json({ error: "Invalid permission. Must be 'read' or 'full'" });
+  }
 
   db.get(
     "SELECT * FROM notes WHERE id = ? AND user_id = ?",
@@ -155,7 +190,7 @@ app.post("/notes/:noteId/share-token", authenticateUser, (req, res) => {
       const token = crypto.randomUUID();
       db.run(
         "INSERT INTO collaborators (note_id, email, permission, token) VALUES (?, ?, ?, ?)",
-        [noteId, null, "write", token],
+        [noteId, null, permission, token],
         function (err) {
           if (err) {
             console.error("Database error:", err);
@@ -167,7 +202,6 @@ app.post("/notes/:noteId/share-token", authenticateUser, (req, res) => {
     }
   );
 });
-
 // Add collaborator
 app.post("/notes/:id/collaborators", authenticateUser, async (req, res) => {
   const { id } = req.params;
@@ -217,6 +251,45 @@ app.get("/notes/:id/collaborators", authenticateUser, (req, res) => {
         (err, collaborators) => {
           if (err) return res.status(500).json({ error: "Internal server error" });
           res.json(collaborators);
+        }
+      );
+    }
+  );
+});
+
+// Generate share token for a note
+app.post("/notes/:noteId/share-token", authenticateUser, (req, res) => {
+  const { noteId } = req.params;
+  const userId = req.userId;
+  const { permission } = req.body; // Get permission from request body
+
+  // Validate permission
+  if (!['read', 'full'].includes(permission)) {
+    return res.status(400).json({ error: "Invalid permission. Must be 'read' or 'full'" });
+  }
+
+  db.get(
+    "SELECT * FROM notes WHERE id = ? AND user_id = ?",
+    [noteId, userId],
+    (err, note) => {
+      if (err) {
+        console.error("Database error:", err);
+        return res.status(500).json({ error: "Internal server error" });
+      }
+      if (!note) {
+        return res.status(403).json({ error: "Unauthorized or note not found" });
+      }
+
+      const token = crypto.randomUUID();
+      db.run(
+        "INSERT INTO collaborators (note_id, email, permission, token) VALUES (?, ?, ?, ?)",
+        [noteId, null, permission, token], // Use permission from request body
+        function (err) {
+          if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ error: "Failed to generate share token" });
+          }
+          res.json({ token });
         }
       );
     }

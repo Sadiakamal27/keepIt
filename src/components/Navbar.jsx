@@ -2,20 +2,25 @@ import { Link, useLocation } from "react-router-dom";
 import { useAppContext } from "../contexts/AppContext";
 import LogoutButton from "./LogoutButton";
 import ShareNote from "./ShareNote";
+import React, {  useEffect } from "react";
+
 
 function Navbar() {
   const { user } = useAppContext();
   const location = useLocation();
 
-  
   const getNoteId = () => {
-   
     const match = location.pathname.match(/\/(?:note|notes)\/([^/]+)/);
     return match ? match[1] : null;
   };
 
   const noteId = getNoteId();
-  console.log("Current noteId:", noteId); 
+
+  useEffect(() => {
+    if (noteId) {
+      console.log("Current noteId on change:", noteId); // Log only on noteId change
+    }
+  }, [noteId]); // Dependency on noteId
 
   return (
     <nav className="bg-amber-600 p-4">

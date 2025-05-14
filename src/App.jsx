@@ -39,6 +39,8 @@ export default function App({noteId}) {
             path="/new"
             element={user ? <Home /> : <Navigate to="/login" replace />}
           />
+
+          
           
           <Route
             path="/note/:noteId"

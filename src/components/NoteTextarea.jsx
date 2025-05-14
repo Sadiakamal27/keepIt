@@ -12,7 +12,6 @@ import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { $getRoot, $createParagraphNode, $createTextNode } from "lexical";
 import ToolbarPlugin from "./ToolbarPlugin";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import ShareNote from "./ShareNote";
 
 const debounce = (func, wait) => {
   let timeout;
@@ -67,12 +66,12 @@ function InitializeEditorPlugin({ initialContent }) {
   return null;
 }
 
-function NoteTextarea({ initialContent, initialTitle, permission }) {
+function NoteTextarea({ initialContent, initialTitle, permission, token }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { notes, isLoading, updateNote, addNote } = useAppContext();
-  const [title, setTitle] = useState("");
-  const [editorInstance, setEditorInstance] = useState(null);
+  const [title, setTitle] = useState(initialTitle || "");
+  const [editorInstance, setEditorInstance] = useState(initialContent || "");
   const [isSaving, setIsSaving] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const contentEditableRef = useRef(null);
@@ -86,17 +85,21 @@ function NoteTextarea({ initialContent, initialTitle, permission }) {
   );
 
   useEffect(() => {
-    if (id && !currentNote && !isLoading) {
+    if (id && !currentNote && !isLoading && !initialContent && !initialTitle) {
       setIsFetching(true);
       const fetchNote = async () => {
         try {
+          const headers = {
+            "Content-Type": "application/json",
+            "user-id": localStorage.getItem("user")
+              ? JSON.parse(localStorage.getItem("user")).id
+              : "",
+          };
+          if (token) {
+            headers.Authorization = `Bearer ${token}`;
+          }
           const response = await fetch(`http://localhost:5000/notes/${id}`, {
-            headers: {
-              "Content-Type": "application/json",
-              "user-id": localStorage.getItem("user")
-                ? JSON.parse(localStorage.getItem("user")).id
-                : "",
-            },
+            headers,
           });
           if (!response.ok) throw new Error("Failed to fetch note");
           const note = await response.json();
@@ -115,30 +118,30 @@ function NoteTextarea({ initialContent, initialTitle, permission }) {
     } else if (currentNote) {
       setTitle(currentNote.title || "");
       setEditorInstance(currentNote.content || "");
-    } else if (initialTitle !== undefined) {
-      setTitle(initialTitle);
-      setEditorInstance(initialContent || "");
     } else {
-      setTitle("");
-      setEditorInstance("");
+      setTitle(initialTitle || "");
+      setEditorInstance(initialContent || "");
     }
-  }, [currentNote, id, isLoading, navigate, initialContent, initialTitle]);
+  }, [currentNote, id, isLoading, navigate, initialContent, initialTitle, token]);
 
-  const onChange = (editorState, editor) => {
-    editorState.read(() => {
-      const jsonState = JSON.stringify(editorState.toJSON());
-      debouncedSetEditorInstance(jsonState);
-    });
-  };
+  const onChange = useCallback(
+    (editorState) => {
+      editorState.read(() => {
+        const jsonState = JSON.stringify(editorState.toJSON());
+        debouncedSetEditorInstance(jsonState);
+      });
+    },
+    [debouncedSetEditorInstance]
+  );
 
   const handleSave = async () => {
     if (!title.trim()) {
       alert("Title cannot be empty!");
       return;
     }
-    
-    // Enforce permission check
-    if (permission && permission !== "write" && permission !== "full") {
+
+    if (permission !== "write" && permission !== "full") {
+      console.log("Permission check failed. Current permission:", permission);
       alert("You do not have permission to edit this note.");
       return;
     }
@@ -152,21 +155,30 @@ function NoteTextarea({ initialContent, initialTitle, permission }) {
         return;
       }
 
-      if (currentNote) {
-        const success = await updateNote(currentNote.id, title, currentEditorState);
-        if (!success) throw new Error("Failed to update note");
+      // Log and verify id just before the condition
+      console.log("handleSave - Pre-condition id:", id, "typeof id:", typeof id, "token:", token);
+      if (id && typeof id === "string" && id.trim()) { // Explicit check for valid id
+        console.log("Executing update for id:", id);
+        const success = await updateNote(id, title, currentEditorState, token);
+        if (!success) {
+          throw new Error("Failed to update note. Check console for details.");
+        }
+        console.log("Note updated successfully with ID:", id);
       } else {
+        console.log("Attempting to create a new note. id is invalid:", id);
         const success = await addNote({ title, content: currentEditorState });
         if (success) {
           setTitle("");
           setEditorInstance("");
           navigate("/");
+          console.log("New note created successfully");
         } else {
           throw new Error("Failed to create note");
         }
       }
     } catch (error) {
       console.error("Save error:", error);
+      alert("Failed to save note: " + error.message);
     } finally {
       setIsSaving(false);
     }
@@ -226,7 +238,7 @@ function NoteTextarea({ initialContent, initialTitle, permission }) {
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Saving...
             </>
-          ) : currentNote ? "Update" : "Save"}
+          ) : id ? "Update" : "Save"}
         </Button>
       </div>
     </div>

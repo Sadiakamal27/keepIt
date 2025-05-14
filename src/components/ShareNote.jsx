@@ -26,32 +26,38 @@ function ShareNote({ noteId }) {
     : `${window.location.origin}/`;
 
   const handleCopyLink = async () => {
-    if (!isReady) {
-      alert("Note is not ready to be shared yet");
-      return;
+  if (!isReady) {
+    alert("Note is not ready to be shared yet");
+    return;
+  }
+  try {
+    const response = await fetch(`http://localhost:5000/notes/${noteId}/share-token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "user-id": user.id,
+      },
+      body: JSON.stringify({ permission }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to generate share token");
     }
-    try {
-      const response = await fetch(`http://localhost:5000/notes/${noteId}/share-token`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "user-id": user.id,
-        },
-        body: JSON.stringify({ permission }), 
-      });
-      if (!response.ok) throw new Error("Failed to generate share token");
-      const { token } = await response.json();
-      const shareLink = `${noteLink}?token=${token}`;
-      navigator.clipboard.writeText(shareLink).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      });
-    } catch (error) {
-      console.error("Error generating share token:", error);
-      alert("Failed to generate share link");
-    }
-  };
+    const { token } = await response.json();
+    const shareLink = `${noteLink}?token=${token}`;
+    navigator.clipboard.writeText(shareLink).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  } catch (error) {
+    console.error("Error generating share token:", error);
+    alert(`Failed to generate share link: ${error.message}`);
+  }
+};
 
+
+
+  
   return (
     <div className="relative">
       <DropdownMenu>
