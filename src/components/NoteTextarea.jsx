@@ -155,9 +155,9 @@ function NoteTextarea({ initialContent, initialTitle, permission, token }) {
         return;
       }
 
-      // Log and verify id just before the condition
+     
       console.log("handleSave - Pre-condition id:", id, "typeof id:", typeof id, "token:", token);
-      if (id && typeof id === "string" && id.trim()) { // Explicit check for valid id
+      if (id && typeof id === "string" && id.trim()) { 
         console.log("Executing update for id:", id);
         const success = await updateNote(id, title, currentEditorState, token);
         if (!success) {

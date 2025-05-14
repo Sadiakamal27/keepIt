@@ -1,4 +1,3 @@
-// CollaborateNoteView.jsx
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useAppContext } from "../contexts/AppContext";
@@ -14,7 +13,7 @@ export default function CollaborateNoteView() {
   const [noteTitle, setNoteTitle] = useState("");
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState(null);
-  const [hasFetched, setHasFetched] = useState(false); // Track if fetch has been attempted
+  const [hasFetched, setHasFetched] = useState(false); 
 
   const fetchNote = useCallback(async () => {
     if (!noteId || isFetching || hasFetched) return;
@@ -59,7 +58,7 @@ export default function CollaborateNoteView() {
       setPermission("read");
     } finally {
       setIsFetching(false);
-      setHasFetched(true); // Mark fetch as complete
+      setHasFetched(true); 
     }
   }, [noteId, collaborationToken, fetchNoteByToken, user, isFetching, hasFetched]);
 
@@ -83,7 +82,7 @@ export default function CollaborateNoteView() {
     <div className="min-h-screen flex flex-col">
       <div className="flex flex-col h-full p-4 text-lg space-y-4" dir="ltr">
         <NoteTextarea
-          key={noteId} // Ensure NoteTextarea re-mounts only when noteId changes
+          key={noteId} 
           initialContent={originalContent}
           initialTitle={noteTitle}
           permission={permission}
